@@ -1,9 +1,12 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Globalization;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace sse_client
 {
@@ -27,10 +30,65 @@ namespace sse_client
             }
             else
             {
-                Console.Write("failed to initialize, please make sure server is up first");
+                Console.Write("failed to initialize, please make sure server is up first\n");
                 return;
             }
-            Console.ReadLine(); // holds application
+            while (true)
+            {
+                var line = Console.ReadLine();
+                if (String.IsNullOrWhiteSpace(line)) continue;
+                var cmds = line.Split(" ");
+                switch (cmds[0])
+                {
+                    case "q":
+                        return;
+                    case "upload":
+                        if (cmds.Length < 2)
+                        {
+                            Console.WriteLine("please provide a filename");
+                            continue;
+                        }
+                        Upload(cmds[1]);
+                        break;
+
+                }
+            }
+        }
+
+        public static string getFileType(string fileName)
+        {
+            var provider = new FileExtensionContentTypeProvider();
+            string contentType;
+            if (!provider.TryGetContentType(fileName, out contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            return contentType;
+        }
+        public static async void Upload(string fileName)
+        {
+            var handler = new HttpClientHandler();
+            handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+            handler.ServerCertificateCustomValidationCallback =
+                (httpRequestMessage, cert, cetChain, policyErrors) =>
+                {
+                    return true;
+                };
+            using (HttpClient client = new HttpClient(handler))
+            {
+                var content = new MultipartFormDataContent("Upload----" + DateTime.Now.ToString(CultureInfo.InvariantCulture));
+                var file = File.OpenRead(fileName);
+                var fstreamContent = new StreamContent(file);
+
+                fstreamContent.Headers.Add("Content-Type", getFileType(fileName));
+                content.Add(new StringContent("user1"), "receiver");
+                content.Add(new StringContent("this is a message"), "message");
+                content.Add(fstreamContent, "myFile", fileName);
+
+                Console.WriteLine("uploading...");
+                await client.PostAsync("https://localhost:5001/api/notification/sendattachment", content);
+                Console.WriteLine("done");
+            }
         }
 
         public static Stream OpenSSEStream(string url)
