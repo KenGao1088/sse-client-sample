@@ -35,6 +35,7 @@ namespace sse_client
             }
             while (true)
             {
+                Console.Write("> ");
                 var line = Console.ReadLine();
                 if (String.IsNullOrWhiteSpace(line)) continue;
                 var cmds = line.Split(" ");
@@ -67,6 +68,7 @@ namespace sse_client
         }
         public static async void Upload(string fileName)
         {
+            // FIXME this is to bypass SSL verification. Remove this handler part in production
             var handler = new HttpClientHandler();
             handler.ClientCertificateOptions = ClientCertificateOption.Manual;
             handler.ServerCertificateCustomValidationCallback =
@@ -74,6 +76,11 @@ namespace sse_client
                 {
                     return true;
                 };
+            if (!File.Exists(fileName))
+            {
+                Console.Error.WriteLine($"file \"{fileName}\" does not exist");
+                return;
+            }
             using (HttpClient client = new HttpClient(handler))
             {
                 var content = new MultipartFormDataContent("Upload----" + DateTime.Now.ToString(CultureInfo.InvariantCulture));
