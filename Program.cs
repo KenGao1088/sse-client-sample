@@ -86,8 +86,16 @@ namespace sse_client
                 content.Add(fstreamContent, "myFile", fileName);
 
                 Console.WriteLine("uploading...");
-                await client.PostAsync("https://localhost:5001/api/notification/sendattachment", content);
-                Console.WriteLine("done");
+                var response = await client.PostAsync("https://localhost:5001/api/notification/sendattachment", content);
+                Console.WriteLine("done. Response:");
+                Console.WriteLine(response.StatusCode);
+                var responseString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(responseString);
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    string id = responseString.Split(" ")[1];
+                    Console.WriteLine($"download link: https://localhost:5001/api/notification/download/{id}");
+                }
             }
         }
 
